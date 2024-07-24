@@ -1,12 +1,15 @@
 import socket
 import sys
 import tkinter
+import ssl
+import certifi
 
-#####downloading webpages
 class URL:
     def __init__(self, url):
         self.scheme, url = url.split("://", 1)
-        assert self.scheme == "http"
+        assert self.scheme in ["http", "https"]
+
+        self.port = 80 if self.scheme == "http" else 443
 
         if "/" not in url:
             self.host = url
@@ -21,10 +24,14 @@ class URL:
             type=socket.SOCK_STREAM,
             proto=socket.IPPROTO_TCP,
         )
-        s.connect((self.host, 80))
+        s.connect((self.host, self.port))
 
-        request = "GET {} HTTP/1.0\r\n".format(self.path)
-        request += "Host: {}\r\n".format(self.host)
+        if self.scheme == "https":
+            ctx = ssl.create_default_context(cafile=certifi.where())
+            s = ctx.wrap_socket(s, server_hostname=self.host)
+
+        request = f"GET {self.path} HTTP/1.0\r\n"
+        request += f"Host: {self.host}\r\n"
         request += "\r\n"
 
         s.send(request.encode("utf8"))
@@ -49,7 +56,8 @@ class URL:
 
         return content
 
-def show(body):
+def lex(body):
+    text = ""
     in_tag = False
     for c in body:
         if c == '<':
@@ -57,25 +65,13 @@ def show(body):
         elif c == '>':
             in_tag = False
         elif not in_tag:
-            print(c, end="")
+            text += c
+    return text
 
-def load(url):
+def loadAndLex(url):
     url_obj = URL(url)
     body = url_obj.request()
-    show(body)
-
-if __name__ == "__main__":
-    load(sys.argv[1])
-
-#run python3 browser.py http://example.org/ to display
-
-#####downloading webpages
-    
-##Drawing to Screen ###
-    
-
-
-import tkinter
+    return lex(body)
 
 class Browser:
     WIDTH, HEIGHT = 800, 600
@@ -86,17 +82,27 @@ class Browser:
         self.canvas.pack()
 
     def load(self, url):
-        # test to show graphics
-        self.canvas.create_rectangle(10, 20, 400, 300, outline="blue", fill="white")
-        self.canvas.create_oval(100, 100, 150, 150, outline="red", fill="yellow")
-        self.canvas.create_text(200, 150, text="Hello World!", fill="black")
+        text = loadAndLex(url)
+        self.canvas.delete("all")
+        HSTEP, VSTEP = 13, 18
+        cursor_x, cursor_y = HSTEP, VSTEP
+
+        for c in text:
+            if c == '\n':
+                cursor_y += VSTEP
+                cursor_x = HSTEP
+            else:
+                self.canvas.create_text(cursor_x, cursor_y, text=c, anchor='nw')
+                cursor_x += HSTEP
+                if cursor_x >= self.WIDTH - HSTEP:
+                    cursor_y += VSTEP
+                    cursor_x = HSTEP
 
 if __name__ == "__main__":
-    import sys
-    browser = Browser()
-    if len(sys.argv) > 1:
-        url = sys.argv[1]
-        browser.load(url)
-    tkinter.mainloop()
+    if len(sys.argv) != 2:
+        print("Usage: python3 browser.py <url>")
+        sys.exit(1)
 
- #run python3 browser.py http://example.org/ to display
+    browser = Browser()
+    browser.load(sys.argv[1])
+    tkinter.mainloop()
