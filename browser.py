@@ -76,36 +76,58 @@ def loadAndLex(url):
     body = url_obj.request()
     return lex(body)
 
+def layout(text):
+    HSTEP, VSTEP = 13, 18
+    display_list= []
+    cursor_x, cursor_y = HSTEP, VSTEP
+    for c in text:
+        if c == "\n":
+            cursor_y += VSTEP
+            cursor_x = HSTEP
+        else:
+            display_list.append((cursor_x, cursor_y, c))
+            cursor_x += HSTEP
+            if cursor_x >= Browser.WIDTH - HSTEP:
+                cursor_y += VSTEP
+                cursor_x = HSTEP
+    return display_list
+
+           
+
 class Browser:
     WIDTH, HEIGHT = 800, 600
+    SCROLL_STEP = 100
 
     def __init__(self):
         self.window = tkinter.Tk()
         self.canvas = tkinter.Canvas(self.window, width=self.WIDTH, height=self.HEIGHT)
         self.canvas.pack()
+        self.scroll = 0
+        self.window.bind("<Down>", self.scrolldown)
+       
+
+
+    def scrolldown(self, e): 
+        self.scroll += self.SCROLL_STEP
+        self.draw()
+
+    def draw(self):
+        self.canvas.delete("all")
+        for x, y, c in self.display_list:
+            self.canvas.create_text(x, y - self.scroll,text=c)
 
     def load(self, url):
-        text = loadAndLex(url)
-        self.canvas.delete("all")
-        HSTEP, VSTEP = 13, 18
-        cursor_x, cursor_y = HSTEP, VSTEP
+            text = loadAndLex(url)
+            self.display_list = layout(text)
+            self.draw()
 
-        for c in text:
-            if c == '\n':
-                cursor_y += VSTEP
-                cursor_x = HSTEP
-            else:
-                self.canvas.create_text(cursor_x, cursor_y, text=c, anchor='nw')
-                cursor_x += HSTEP
-                if cursor_x >= self.WIDTH - HSTEP:
-                    cursor_y += VSTEP
-                    cursor_x = HSTEP
+        
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("Usage: python3 browser.py <url>")
-        sys.exit(1)
+        if len(sys.argv) != 2:
+            print("Usage: python3 browser.py <url>")
+            sys.exit(1)
 
-    browser = Browser()
-    browser.load(sys.argv[1])
-    tkinter.mainloop()
+        browser = Browser()
+        browser.load(sys.argv[1])
+        tkinter.mainloop()
