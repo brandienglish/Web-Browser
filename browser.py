@@ -1,3 +1,6 @@
+#### comand line for ex. python3 browser.py https://browser.engineering/examples/xiyouji.html 
+
+
 import socket
 import sys
 import tkinter
